@@ -34,18 +34,27 @@ if __name__ == "__main__":
 
     mse = mean_squared_error(Y_test.loc[:, 'U_mu'], predictions[:, 1])
 
-    print("Mean error in predicted humidity before PCA: ", mse)
+    print("Mean squared error in predicted humidity before PCA: ", mse)
     print("Error count with predicted OBSERVED: ", sum(np.abs(regression_frame.iloc[:, 1]
                                                               - regression_frame.iloc[:, 0])),
           " out of total 3140 observation\n")
 
     # linear regression with n PCA-components (own pca-function)
-    """n = 16
+    n = 8
     pca_model = LinearRegression()
-    pca_cmps, std_df = pca(X_train)
+    pca_cmps, sorted_eigenvectors = pca(X_train, n_comp=n, expl_var=True)
+    print(sorted_eigenvectors.shape)
+
     pca_model.fit(pca_cmps, Y_train)
-    test_pca_set, std_test_df = pca(X_test)
-    pca_predictions = pca_model.predict(test_pca_set)
+
+    X_test_std = StandardScaler().fit_transform(X_test)
+
+    test_pca_df = pd.DataFrame(index=X_test)
+    for i in range(len(sorted_eigenvectors)):
+        test_pca_df['PCA_cmp' + str(i + 1)] = sorted_eigenvectors[:, i] @ X_test_std.T
+
+
+    pca_predictions = pca_model.predict(test_pca_df.iloc[:,0:n])
     pca_predictions[:, 0] = np.rint(pca_predictions[:, 0])
     pca_regression_frame = pd.DataFrame(index=X_test.index, data={'predicted OBSERVATION': pca_predictions[:, 0],
                                                                   'OBSERVATION': Y_test.loc[:, 'OBSERVED'],
@@ -53,13 +62,12 @@ if __name__ == "__main__":
                                                                   'U_mu': Y_test.loc[:, 'U_mu']})
     print(pca_regression_frame.head(10))
 
-    mean_error = np.mean((pca_regression_frame.loc[:, 'predicted U_mu'] - pca_regression_frame.loc[:, 'U_mu'])
-                         / pca_regression_frame.loc[:, 'U_mu'])
+    mse = mean_squared_error(Y_test.loc[:, 'U_mu'], pca_predictions[:, 1])
 
-    print("Mean error in humidity with ", n, " first PCA-components: ", mean_error)
+    print("Mean squared error in humidity with ", str(n), " first PCA-components: ", mse)
     print("Error count with predicted OBSERVED: ",
           sum(np.abs(pca_regression_frame.iloc[:, 1]
-                     - pca_regression_frame.iloc[:, 0])), " out of total 3140 observation\n")"""
+                     - pca_regression_frame.iloc[:, 0])), " out of total 3140 observation\n")
 
 
     # linear regression with build in PCA
@@ -104,17 +112,18 @@ if __name__ == "__main__":
     plt.show()
 
     # now lets do linear regression with the 8 PCA comps
-    pca_func = PCA(n_components=8)
+    pca_func = PCA(n_components='mle')
     PCA_cmps = pca_func.fit_transform(X_std)
-
+    print(PCA_cmps.shape)
     pca_model = LinearRegression()
     pca_model.fit(PCA_cmps, Y_train)
 
     # we have to do the PCA also for the test data
     test_PCA_cmps = pca_func.fit_transform(X_test_std)
+    print(test_PCA_cmps.shape)
     predictions = pca_model.predict(test_PCA_cmps)
 
-    pca_regression_frame = pd.DataFrame(index=X_test.index, data={'predicted OBSERVATION': predictions[:, 0],
+    pca_regression_frame = pd.DataFrame(index=X_test.index, data={'predicted OBSERVATION': np.rint(predictions[:, 0]),
                                                                   'OBSERVATION': Y_test.loc[:, 'OBSERVED'],
                                                                   'predicted U_mu': predictions[:, 1],
                                                                   'U_mu': Y_test.loc[:, 'U_mu']})

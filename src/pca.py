@@ -5,18 +5,18 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
 
-def pca(df, n_comp=-1, expl_var=False):
+def pca(df, n_comp=0, expl_var=False):
     # standardize
     std_df = StandardScaler().fit_transform(df)
     # covariance matrix out of standardized data matrix
-    N = len(df.index)
+    N = len(df)
     cov_matrix = 1/(N-1)*std_df.T @ std_df
     # eigenvalues and -vectors
     eigenValues, eigenVectors = np.linalg.eig(cov_matrix)
     # sorting eigenVectors and -values according to descending order by eigenvalue
     idx = eigenValues.argsort()[::-1]
     sorted_eigenValues = eigenValues[idx]
-    sorted_eigenVectors = eigenVectors[:, idx]
+    sorted_eigenVectors = -eigenVectors[:, idx]
 
     if(expl_var):
         """Variance explained by PCA-components (= How much of the difference between data samples is still captured when
@@ -36,9 +36,9 @@ def pca(df, n_comp=-1, expl_var=False):
         pca_df['PCA_cmp' + str(i + 1)] = sorted_eigenVectors[:, i] @ std_df.T
 
     if n_comp <= 0:
-        return pca_df, std_df
+        return pca_df, sorted_eigenVectors
     else:
-        return pca_df.iloc[:, 0:n_comp-1], std_df
+        return pca_df.iloc[:, 0:n_comp], sorted_eigenVectors
 
 
 if __name__ == "__main__":
@@ -47,23 +47,22 @@ if __name__ == "__main__":
                           sep=';', decimal=',', infer_datetime_format=True)
     test = X_train
     # testing self made pca function
-    test_pca, stand_df = pca(test, expl_var=True)
+    test_pca, stand_df = pca(test)
     print(test_pca)
     first2 = test_pca.loc[:, ('PCA_cmp1', 'PCA_cmp2')]
     plt.scatter(first2.loc[:, 'PCA_cmp1'], first2.loc[:, 'PCA_cmp2'], s=1)
     plt.show()
 
-    """
+
     # testing default pca function from sklearn
     def_pca = PCA()
     X_std = StandardScaler().fit_transform(X_train)
     stdf = pd.DataFrame(data=X_std)
-    print("own\n", stand_df, "build in\n", stdf)
     pcaComps = def_pca.fit_transform(X_std)
     pcdf = pd.DataFrame(data=pcaComps)
     print(pcdf)
     def_first2 = pcdf.loc[:, 0:1]
     print(def_first2)
     plt.scatter(def_first2.loc[:, 0], def_first2.loc[:, 1], s=1)
-    plt.show()"""
+    plt.show()
 
